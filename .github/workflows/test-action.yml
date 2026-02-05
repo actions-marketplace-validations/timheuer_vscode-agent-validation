@@ -1,11 +1,11 @@
-# Test the action against fixtures and generate a summary
+# Test the action against fixtures using matrix strategy
 name: Test Action
 
 on:
     workflow_dispatch:
 
 jobs:
-    test-action:
+    build:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v6
@@ -21,65 +21,103 @@ jobs:
                   npm ci
                   npm run build
 
-            - name: Validate test fixtures
+            - name: Upload built action
+              uses: actions/upload-artifact@v4
+              with:
+                  name: dist
+                  path: dist/
+
+    test-fixtures:
+        needs: build
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - path: "./test/fixtures/valid"
+                      name: "valid"
+                      should-pass: true
+                    - path: "./test/fixtures/invalid"
+                      name: "invalid"
+                      should-pass: false
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Download built action
+              uses: actions/download-artifact@v4
+              with:
+                  name: dist
+                  path: dist/
+
+            - name: Validate ${{ matrix.name }} fixtures
               id: validate
               continue-on-error: true
               uses: ./
               with:
-                  path: "./test/fixtures"
+                  path: ${{ matrix.path }}
+
+            - name: Check result
+              run: |
+                  if [ "${{ matrix.should-pass }}" == "true" ]; then
+                    if [ "${{ steps.validate.outputs.valid }}" != "true" ]; then
+                      echo "::error::Expected ${{ matrix.name }} fixtures to pass but they failed"
+                      exit 1
+                    fi
+                    echo "✅ ${{ matrix.name }} fixtures passed as expected"
+                  else
+                    if [ "${{ steps.validate.outputs.valid }}" == "true" ]; then
+                      echo "::error::Expected ${{ matrix.name }} fixtures to fail but they passed"
+                      exit 1
+                    fi
+                    echo "✅ ${{ matrix.name }} fixtures failed as expected"
+                  fi
 
             - name: Generate summary
               if: always()
               run: |
-                  echo "## 🔍 Agent Validation Results" >> $GITHUB_STEP_SUMMARY
+                  echo "## 🔍 ${{ matrix.name }} Fixtures" >> $GITHUB_STEP_SUMMARY
                   echo "" >> $GITHUB_STEP_SUMMARY
 
-                  # Status badge
-                  if [ "${{ steps.validate.outputs.valid }}" == "true" ]; then
-                    echo "### ✅ Validation Passed" >> $GITHUB_STEP_SUMMARY
-                  else
-                    echo "### ❌ Validation Failed" >> $GITHUB_STEP_SUMMARY
-                  fi
-                  echo "" >> $GITHUB_STEP_SUMMARY
-
-                  # Stats table
                   echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
                   echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+                  echo "| Path | \`${{ matrix.path }}\` |" >> $GITHUB_STEP_SUMMARY
                   echo "| Files Validated | ${{ steps.validate.outputs.files-validated }} |" >> $GITHUB_STEP_SUMMARY
-
-                  # Count errors and warnings from JSON
-                  ERRORS='${{ steps.validate.outputs.errors }}'
-                  WARNINGS='${{ steps.validate.outputs.warnings }}'
-                  ERROR_COUNT=$(echo "$ERRORS" | jq 'length')
-                  WARNING_COUNT=$(echo "$WARNINGS" | jq 'length')
-
-                  echo "| Errors | $ERROR_COUNT |" >> $GITHUB_STEP_SUMMARY
-                  echo "| Warnings | $WARNING_COUNT |" >> $GITHUB_STEP_SUMMARY
+                  echo "| Valid | ${{ steps.validate.outputs.valid }} |" >> $GITHUB_STEP_SUMMARY
                   echo "" >> $GITHUB_STEP_SUMMARY
 
-                  # List errors if any
-                  if [ "$ERROR_COUNT" != "0" ]; then
-                    echo "### ❌ Errors" >> $GITHUB_STEP_SUMMARY
-                    echo "" >> $GITHUB_STEP_SUMMARY
+                  ERRORS='${{ steps.validate.outputs.errors }}'
+                  WARNINGS='${{ steps.validate.outputs.warnings }}'
+
+                  if [ "$ERRORS" != "[]" ] && [ -n "$ERRORS" ]; then
+                    echo "### Errors" >> $GITHUB_STEP_SUMMARY
                     echo "$ERRORS" | jq -r '.[] | "- **\(.ruleId)**: \(.message)"' >> $GITHUB_STEP_SUMMARY
                     echo "" >> $GITHUB_STEP_SUMMARY
                   fi
 
-                  # List warnings if any
-                  if [ "$WARNING_COUNT" != "0" ]; then
-                    echo "### ⚠️ Warnings" >> $GITHUB_STEP_SUMMARY
-                    echo "" >> $GITHUB_STEP_SUMMARY
+                  if [ "$WARNINGS" != "[]" ] && [ -n "$WARNINGS" ]; then
+                    echo "### Warnings" >> $GITHUB_STEP_SUMMARY
                     echo "$WARNINGS" | jq -r '.[] | "- **\(.ruleId)**: \(.message)"' >> $GITHUB_STEP_SUMMARY
-                    echo "" >> $GITHUB_STEP_SUMMARY
                   fi
 
-            - name: Test with ignore rules
+    test-features:
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Download built action
+              uses: actions/download-artifact@v4
+              with:
+                  name: dist
+                  path: dist/
+
+            - name: Test ignore-rules option
               uses: ./
               with:
                   path: "./test/fixtures/invalid/short-description.agent.md"
                   ignore-rules: "description-quality"
 
-            - name: Test strict mode catches warnings
+            - name: Test fail-on-warning option
               id: strict-test
               continue-on-error: true
               uses: ./
@@ -90,7 +128,7 @@ jobs:
             - name: Verify strict mode failed
               run: |
                   if [ "${{ steps.strict-test.outcome }}" != "failure" ]; then
-                    echo "Expected strict mode to fail but it passed"
+                    echo "::error::Expected strict mode to fail but it passed"
                     exit 1
                   fi
-                  echo "Strict mode correctly detected warnings"
+                  echo "✅ Strict mode correctly detected warnings"
