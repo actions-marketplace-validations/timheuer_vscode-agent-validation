@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output (keep dist/index.js for the action)
+dist/*.d.ts
+dist/*.d.ts.map
+dist/package.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Lock files
+pnpm-lock.yaml
+yarn.lock
+
+# Environment
+.env
+.env.local

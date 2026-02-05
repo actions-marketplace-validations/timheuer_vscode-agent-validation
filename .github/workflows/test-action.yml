@@ -1,0 +1,96 @@
+# Test the action against fixtures and generate a summary
+name: Test Action
+
+on:
+    workflow_dispatch:
+
+jobs:
+    test-action:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "20"
+                  cache: "npm"
+
+            - name: Install and build
+              run: |
+                  npm ci
+                  npm run build
+
+            - name: Validate test fixtures
+              id: validate
+              continue-on-error: true
+              uses: ./
+              with:
+                  path: "./test/fixtures"
+
+            - name: Generate summary
+              if: always()
+              run: |
+                  echo "## 🔍 Agent Validation Results" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+
+                  # Status badge
+                  if [ "${{ steps.validate.outputs.valid }}" == "true" ]; then
+                    echo "### ✅ Validation Passed" >> $GITHUB_STEP_SUMMARY
+                  else
+                    echo "### ❌ Validation Failed" >> $GITHUB_STEP_SUMMARY
+                  fi
+                  echo "" >> $GITHUB_STEP_SUMMARY
+
+                  # Stats table
+                  echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+                  echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+                  echo "| Files Validated | ${{ steps.validate.outputs.files-validated }} |" >> $GITHUB_STEP_SUMMARY
+
+                  # Count errors and warnings from JSON
+                  ERRORS='${{ steps.validate.outputs.errors }}'
+                  WARNINGS='${{ steps.validate.outputs.warnings }}'
+                  ERROR_COUNT=$(echo "$ERRORS" | jq 'length')
+                  WARNING_COUNT=$(echo "$WARNINGS" | jq 'length')
+
+                  echo "| Errors | $ERROR_COUNT |" >> $GITHUB_STEP_SUMMARY
+                  echo "| Warnings | $WARNING_COUNT |" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+
+                  # List errors if any
+                  if [ "$ERROR_COUNT" != "0" ]; then
+                    echo "### ❌ Errors" >> $GITHUB_STEP_SUMMARY
+                    echo "" >> $GITHUB_STEP_SUMMARY
+                    echo "$ERRORS" | jq -r '.[] | "- **\(.ruleId)**: \(.message)"' >> $GITHUB_STEP_SUMMARY
+                    echo "" >> $GITHUB_STEP_SUMMARY
+                  fi
+
+                  # List warnings if any
+                  if [ "$WARNING_COUNT" != "0" ]; then
+                    echo "### ⚠️ Warnings" >> $GITHUB_STEP_SUMMARY
+                    echo "" >> $GITHUB_STEP_SUMMARY
+                    echo "$WARNINGS" | jq -r '.[] | "- **\(.ruleId)**: \(.message)"' >> $GITHUB_STEP_SUMMARY
+                    echo "" >> $GITHUB_STEP_SUMMARY
+                  fi
+
+            - name: Test with ignore rules
+              uses: ./
+              with:
+                  path: "./test/fixtures/invalid/short-description.agent.md"
+                  ignore-rules: "description-quality"
+
+            - name: Test strict mode catches warnings
+              id: strict-test
+              continue-on-error: true
+              uses: ./
+              with:
+                  path: "./test/fixtures/invalid/short-description.agent.md"
+                  fail-on-warning: "true"
+
+            - name: Verify strict mode failed
+              run: |
+                  if [ "${{ steps.strict-test.outcome }}" != "failure" ]; then
+                    echo "Expected strict mode to fail but it passed"
+                    exit 1
+                  fi
+                  echo "Strict mode correctly detected warnings"

@@ -1,0 +1,23 @@
+# Simple example: Validate all agent files in repository
+name: Validate Agents
+
+on:
+  push:
+    paths:
+      - ".github/agents/**"
+      - "**/*.agent.md"
+  pull_request:
+    paths:
+      - ".github/agents/**"
+      - "**/*.agent.md"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate VS Code Agents
+        uses: timheuer/vscode-agent-validation@v1
+        with:
+          path: "."

@@ -1,0 +1,67 @@
+# Advanced example: Validate only changed agent files with strict mode
+name: Validate Changed Agents
+
+on:
+  pull_request:
+    paths:
+      - ".github/agents/**"
+      - "**/*.agent.md"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Get changed agent files
+        id: changed
+        run: |
+          CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -E '\.agent\.md$' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No agent files changed"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changed files: $CHANGED"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            # Create a temp directory with changed files
+            mkdir -p .changed-agents
+            for file in $CHANGED; do
+              if [ -f "$file" ]; then
+                cp "$file" .changed-agents/
+              fi
+            done
+          fi
+
+      - name: Validate changed agents
+        if: steps.changed.outputs.has_changes == 'true'
+        id: validate
+        uses: timheuer/vscode-agent-validation@v1
+        with:
+          path: ".changed-agents"
+          fail-on-warning: "true"
+          validate-references: "true"
+
+      - name: Report validation results
+        if: always() && steps.changed.outputs.has_changes == 'true'
+        run: |
+          echo "## Agent Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Valid:** ${{ steps.validate.outputs.valid }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Files Validated:** ${{ steps.validate.outputs.files-validated }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.validate.outputs.errors }}" != "[]" ]; then
+            echo "### Errors" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            echo '${{ steps.validate.outputs.errors }}' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ steps.validate.outputs.warnings }}" != "[]" ]; then
+            echo "### Warnings" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            echo '${{ steps.validate.outputs.warnings }}' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi

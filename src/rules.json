@@ -1,0 +1,122 @@
+{
+    "frontmatter-required": {
+        "id": "frontmatter-required",
+        "severity": "error",
+        "message": "Agent file must contain YAML frontmatter (content between --- markers)"
+    },
+    "frontmatter-valid": {
+        "id": "frontmatter-valid",
+        "severity": "error",
+        "message": "Invalid YAML frontmatter: {detail}"
+    },
+    "file-extension": {
+        "id": "file-extension",
+        "severity": "error",
+        "message": "Agent file must have .agent.md extension"
+    },
+    "description-format": {
+        "id": "description-format",
+        "severity": "warning",
+        "message": "Description should be a non-empty string for better discoverability"
+    },
+    "description-quality": {
+        "id": "description-quality",
+        "severity": "warning",
+        "message": "Description is very short ({length} chars). Consider providing more detail (recommended: 50+ characters)"
+    },
+    "name-format": {
+        "id": "name-format",
+        "severity": "error",
+        "message": "Name must be a string if provided"
+    },
+    "argument-hint-format": {
+        "id": "argument-hint-format",
+        "severity": "error",
+        "message": "Argument-hint must be a string if provided"
+    },
+    "tools-format": {
+        "id": "tools-format",
+        "severity": "error",
+        "message": "Tools must be an array of strings. {detail}"
+    },
+    "agents-format": {
+        "id": "agents-format",
+        "severity": "error",
+        "message": "Agents must be an array of strings, '*' for all agents, or [] for none. {detail}"
+    },
+    "model-format": {
+        "id": "model-format",
+        "severity": "error",
+        "message": "Model must be a string or array of strings. {detail}"
+    },
+    "user-invokable-format": {
+        "id": "user-invokable-format",
+        "severity": "error",
+        "message": "user-invokable must be a boolean (true/false)"
+    },
+    "disable-model-invocation-format": {
+        "id": "disable-model-invocation-format",
+        "severity": "error",
+        "message": "disable-model-invocation must be a boolean (true/false)"
+    },
+    "infer-deprecated": {
+        "id": "infer-deprecated",
+        "severity": "warning",
+        "message": "The 'infer' field is deprecated. Use 'user-invokable' and 'disable-model-invocation' instead"
+    },
+    "target-valid": {
+        "id": "target-valid",
+        "severity": "error",
+        "message": "Target must be 'vscode' or 'github-copilot'. Got: '{value}'"
+    },
+    "mcp-servers-format": {
+        "id": "mcp-servers-format",
+        "severity": "error",
+        "message": "mcp-servers must be an array of server configuration objects"
+    },
+    "handoffs-format": {
+        "id": "handoffs-format",
+        "severity": "error",
+        "message": "Handoffs must be an array of handoff objects"
+    },
+    "handoff-label-required": {
+        "id": "handoff-label-required",
+        "severity": "error",
+        "message": "Handoff at index {index} is missing required 'label' field"
+    },
+    "handoff-agent-required": {
+        "id": "handoff-agent-required",
+        "severity": "error",
+        "message": "Handoff at index {index} is missing required 'agent' field"
+    },
+    "handoff-send-format": {
+        "id": "handoff-send-format",
+        "severity": "error",
+        "message": "Handoff 'send' field at index {index} must be a boolean"
+    },
+    "handoff-model-format": {
+        "id": "handoff-model-format",
+        "severity": "error",
+        "message": "Handoff 'model' field at index {index} must be a string"
+    },
+    "unknown-field": {
+        "id": "unknown-field",
+        "severity": "warning",
+        "message": "Unknown frontmatter field: '{field}'. Known fields are: {knownFields}"
+    },
+    "body-empty": {
+        "id": "body-empty",
+        "severity": "warning",
+        "message": "Agent body content is empty. Consider adding instructions for the agent"
+    },
+    "body-too-long": {
+        "id": "body-too-long",
+        "severity": "warning",
+        "message": "Agent body is very long ({lines} lines). Consider breaking into smaller instruction files"
+    },
+    "reference-not-found": {
+        "id": "reference-not-found",
+        "severity": "error",
+        "message": "Referenced file not found: {path}"
+    }
+}

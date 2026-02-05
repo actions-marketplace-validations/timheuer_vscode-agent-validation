@@ -1,0 +1,39 @@
+name: "Validate VS Code Custom Agent"
+description: "Validates .agent.md files against the VS Code custom agent specification"
+author: "Tim Heuer"
+
+branding:
+  icon: "check-circle"
+  color: "blue"
+
+inputs:
+  path:
+    description: "Path to the .agent.md file or directory containing agent files"
+    required: false
+    default: "."
+  fail-on-warning:
+    description: "Treat warnings as errors"
+    required: false
+    default: "false"
+  ignore-rules:
+    description: 'Comma-separated list of rule IDs to ignore (e.g., "description-quality,body-empty")'
+    required: false
+    default: ""
+  validate-references:
+    description: "Check that file references in the agent body actually exist"
+    required: false
+    default: "false"
+
+outputs:
+  valid:
+    description: "Whether the agent file(s) are valid (true/false)"
+  errors:
+    description: "JSON array of validation errors"
+  warnings:
+    description: "JSON array of validation warnings"
+  files-validated:
+    description: "Number of agent files validated"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"
