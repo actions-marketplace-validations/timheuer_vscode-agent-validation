@@ -88,15 +88,19 @@ jobs:
                   ERRORS='${{ steps.validate.outputs.errors }}'
                   WARNINGS='${{ steps.validate.outputs.warnings }}'
 
-                  if [ "$ERRORS" != "[]" ] && [ -n "$ERRORS" ]; then
-                    echo "### Errors" >> $GITHUB_STEP_SUMMARY
-                    echo "$ERRORS" | jq -r '.[] | "- **\(.ruleId)**: \(.message)"' >> $GITHUB_STEP_SUMMARY
-                    echo "" >> $GITHUB_STEP_SUMMARY
-                  fi
+                  # Combine errors and warnings, group by file
+                  ALL_ISSUES=$(echo "$ERRORS $WARNINGS" | jq -s 'add // []')
+                  FILES=$(echo "$ALL_ISSUES" | jq -r '[.[].file] | unique | .[]' 2>/dev/null || echo "")
 
-                  if [ "$WARNINGS" != "[]" ] && [ -n "$WARNINGS" ]; then
-                    echo "### Warnings" >> $GITHUB_STEP_SUMMARY
-                    echo "$WARNINGS" | jq -r '.[] | "- **\(.ruleId)**: \(.message)"' >> $GITHUB_STEP_SUMMARY
+                  if [ -n "$FILES" ]; then
+                    echo "### Issues by File" >> $GITHUB_STEP_SUMMARY
+                    echo "" >> $GITHUB_STEP_SUMMARY
+                    echo "| File | Severity | Rule | Message |" >> $GITHUB_STEP_SUMMARY
+                    echo "|------|----------|------|---------|" >> $GITHUB_STEP_SUMMARY
+
+                    echo "$ALL_ISSUES" | jq -r 'sort_by(.file) | .[] | 
+                      "| \(.file | split("/") | last) | \(if .severity == "error" then "❌ Error" else "⚠️ Warning" end) | `\(.ruleId)` | \(.message) |"' >> $GITHUB_STEP_SUMMARY
+                    echo "" >> $GITHUB_STEP_SUMMARY
                   fi
 
     test-features:
